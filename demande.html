@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Demande de Saint Valentin</title>
+  <style>
+    :root{
+      --bg: #ffe6e6;
+      --accent: #d63384;
+      --yes: #28a745;
+      --yes-hover: #218838;
+      --no: #dc3545;
+      --no-hover: #c82333;
+      --card-bg: #fff7f9;
+      --radius: 12px;
+    }
+
+    html,body { height:100%; margin:0; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: var(--bg);
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding:20px;
+      color: #333;
+    }
+
+    .card {
+      width: min(560px, 100%);
+      background: linear-gradient(180deg, var(--card-bg), #fff);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+      text-align: center;
+      position: relative;
+    }
+
+    h1 {
+      color: var(--accent);
+      font-size: 1.7rem;
+      margin: 0 0 18px;
+    }
+
+    .buttons {
+      position: relative; /* non button will be absolutely positioned inside */
+      height: 90px; /* reserve space for dodge */
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:20px;
+    }
+
+    .btn {
+      padding: 12px 22px;
+      font-size: 1.15rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.12s;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      user-select: none;
+    }
+
+    .btn:active { transform: translateY(1px); }
+
+    #oui {
+      background-color: var(--yes);
+      color: white;
+    }
+    #oui:hover, #oui:focus { background-color: var(--yes-hover); outline: none; }
+
+    #non {
+      background-color: var(--no);
+      color: white;
+      position: absolute; /* will be positioned by script */
+      left: calc(50% + 140px); /* initial safe position (overridden by script on load) */
+      top: 0;
+    }
+    #non:hover, #non:focus { background-color: var(--no-hover); outline: none; }
+
+    .message {
+      margin-top: 18px;
+      font-size: 1.15rem;
+      color: var(--accent);
+      display: none;
+    }
+
+    /* confetti */
+    .confetti {
+      position: absolute;
+      pointer-events: none;
+      font-size: 16px;
+      opacity: 0.95;
+      transform-origin: center;
+      animation: fall 1400ms linear forwards, spin 1000ms linear infinite;
+    }
+    @keyframes fall {
+      0% { transform: translateY(-10vh) rotate(0deg) scale(1); opacity: 1; }
+      100% { transform: translateY(120vh) rotate(720deg) scale(0.9); opacity: 0; }
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* responsive */
+    @media (max-width:420px){
+      .buttons { height:110px; gap:12px; }
+      .btn { padding:10px 16px; font-size:1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card" aria-live="polite">
+    <h1>Veux-tu être ma Valentine ?</h1>
+
+    <div class="buttons" id="buttons" aria-hidden="false">
+      <button id="oui" class="btn" aria-label="Oui, je veux être ta Valentine">Oui</button>
+      <button id="non" class="btn" aria-label="Non, je refuse">Non</button>
+    </div>
+
+    <div class="message" id="message" role="status" aria-live="polite">
+      Youpi ! Tu as dit oui ! ❤️
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const nonButton = document.getElementById('non');
+      const ouiButton = document.getElementById('oui');
+      const message = document.getElementById('message');
+      const buttonsWrap = document.getElementById('buttons');
+      const card = document.querySelector('.card');
+
+      // Utility: get random integer in [min, max]
+      function randInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+
+      // Place the 'Non' button in an initial safe place on load (center-right)
+      function placeInitialNon() {
+        // ensure absolute relative to buttonsWrap
+        const wrapRect = buttonsWrap.getBoundingClientRect();
+        const nonRect = nonButton.getBoundingClientRect();
+        // default near right but inside
+        const maxX = buttonsWrap.clientWidth - nonButton.offsetWidth;
+        const maxY = buttonsWrap.clientHeight - nonButton.offsetHeight;
+        const left = Math.min(maxX, Math.max(0, Math.round(maxX * 0.75)));
+        const top = Math.min(maxY, Math.max(0, Math.round(maxY * 0.15)));
+        nonButton.style.position = 'absolute';
+        nonButton.style.left = left + 'px';
+        nonButton.style.top = top + 'px';
+      }
+
+      // Move the 'Non' button to a random position inside the buttonsWrap,
+      // avoiding overlap with the Oui button (simple distance check).
+      function moveNonAway() {
+        const wrapW = buttonsWrap.clientWidth;
+        const wrapH = buttonsWrap.clientHeight;
+        const nbW = nonButton.offsetWidth;
+        const nbH = nonButton.offsetHeight;
+        const obRect = ouiButton.getBoundingClientRect();
+        const wrapRect = buttonsWrap.getBoundingClientRect();
+
+        const obRel = {
+          left: obRect.left - wrapRect.left,
+          top: obRect.top - wrapRect.top,
+          width: obRect.width,
+          height: obRect.height,
+        };
+
+        const padding = 12; // minimum spacing between buttons
+        const minDist = Math.max(nbW, nbH) + padding;
+
+        let tries = 0;
+        let x, y;
+        do {
+          x = randInt(0, Math.max(0, wrapW - nbW));
+          y = randInt(0, Math.max(0, wrapH - nbH));
+          // center distance between candidate and oui
+          const cx = x + nbW / 2;
+          const cy = y + nbH / 2;
+          const obCx = obRel.left + obRel.width / 2;
+          const obCy = obRel.top + obRel.height / 2;
+          const dx = cx - obCx;
+          const dy = cy - obCy;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist >= minDist) break;
+          tries++;
+        } while (tries < 60);
+
+        // Apply position
+        nonButton.style.left = x + 'px';
+        nonButton.style.top = y + 'px';
+      }
+
+      // Confetti when Yes clicked
+      function burstConfetti(count = 30) {
+        const emojis = ['🎉','💖','✨','🌟','💐','🥰','🎈'];
+        const wrapRect = card.getBoundingClientRect();
+        for (let i = 0; i < count; i++) {
+          const span = document.createElement('span');
+          span.className = 'confetti';
+          span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+          // random horizontal start within card
+          const startX = Math.random() * wrapRect.width;
+          span.style.left = Math.max(0, Math.min(wrapRect.width - 24, startX)) + 'px';
+          // a little random delay and scale
+          span.style.top = (-30 - Math.random() * 30) + 'px';
+          span.style.fontSize = (12 + Math.random() * 16) + 'px';
+          // add to card
+          card.appendChild(span);
+          // remove after animation ends
+          setTimeout(() => {
+            if (span && span.parentNode) span.parentNode.removeChild(span);
+          }, 1800 + Math.random() * 800);
+        }
+      }
+
+      // Handler when user accepts
+      ouiButton.addEventListener('click', () => {
+        message.style.display = 'block';
+        message.textContent = 'Youpi ! Tu as dit oui ! ❤️';
+        // disable non-button (optional)
+        nonButton.setAttribute('disabled', 'true');
+        nonButton.style.cursor = 'not-allowed';
+        burstConfetti(36);
+      });
+
+      // Move the non button on mouseenter, focus (keyboard), and touchstart
+      nonButton.addEventListener('mouseenter', moveNonAway, { passive: true });
+      nonButton.addEventListener('focus', moveNonAway);
+      nonButton.addEventListener('touchstart', (e) => {
+        e.preventDefault(); // prevent accidental click on touch
+        moveNonAway();
+      }, { passive: false });
+
+      // Also make the non button dodge if the pointer moves quickly near the Oui button
+      // (optional enhancement)
+      ouiButton.addEventListener('mousemove', (e) => {
+        // small chance to trigger move when user hovers near Oui
+        if (Math.random() < 0.12) moveNonAway();
+      });
+
+      // Place initial position on load and on resize
+      window.addEventListener('resize', () => {
+        // recompute; keep non button inside bounds
+        const maxX = Math.max(0, buttonsWrap.clientWidth - nonButton.offsetWidth);
+        const maxY = Math.max(0, buttonsWrap.clientHeight - nonButton.offsetHeight);
+        let left = parseInt(nonButton.style.left || 0, 10);
+        let top = parseInt(nonButton.style.top || 0, 10);
+        left = Math.min(maxX, Math.max(0, left));
+        top  = Math.min(maxY, Math.max(0, top));
+        nonButton.style.left = left + 'px';
+        nonButton.style.top = top + 'px';
+      });
+
+      // initial placement once DOM calculated
+      placeInitialNon();
+      // ensure non button is keyboard-focusable
+      nonButton.setAttribute('tabindex', '0');
+
+      // Prevent click on 'Non' if user somehow manages to click quickly:
+      nonButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        // move away again for extra playfulness
+        moveNonAway();
+      });
+    })();
+  </script>
+  <!-- paste juste avant </body> -->
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>eruda.init();</script>
+</body>
+</html>
